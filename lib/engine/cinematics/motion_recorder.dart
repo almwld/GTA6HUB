@@ -1,4 +1,6 @@
 import 'dart:collection';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MotionFrame {
   final double speed;
@@ -21,10 +23,38 @@ class MotionFrame {
   };
 
   factory MotionFrame.fromJson(Map<String, dynamic> json) => MotionFrame(
-    speed: json['speed'] as double,
-    depth: json['depth'] as double,
+    speed: (json['speed'] as num).toDouble(),
+    depth: (json['depth'] as num).toDouble(),
     position: json['position'] as String,
-    timestamp: json['timestamp'] as double,
+    timestamp: (json['timestamp'] as num).toDouble(),
+  );
+}
+
+class SavedSequence {
+  final String name;
+  final double duration;
+  final int frameCount;
+  final List<MotionFrame> frames;
+
+  SavedSequence({
+    required this.name,
+    required this.duration,
+    required this.frameCount,
+    required this.frames,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'duration': duration,
+    'frameCount': frameCount,
+    'frames': frames.map((f) => f.toJson()).toList(),
+  };
+
+  factory SavedSequence.fromJson(Map<String, dynamic> json) => SavedSequence(
+    name: json['name'] as String,
+    duration: (json['duration'] as num).toDouble(),
+    frameCount: (json['frameCount'] as num).toInt(),
+    frames: (json['frames'] as List).map((f) => MotionFrame.fromJson(f as Map<String, dynamic>)).toList(),
   );
 }
 
@@ -42,6 +72,41 @@ class MotionRecorder {
   double get playbackTime => _playbackTime;
   int get frameCount => _frames.length;
 
+  // --- الحفظ الدائم ---
+  static const String _storageKey = 'saved_sequences';
+
+  Future<void> saveCurrentSequence(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    final sequence = SavedSequence(
+      name: name,
+      duration: _recordingTime,
+      frameCount: _frames.length,
+      frames: _frames.toList(),
+    );
+    // استرجاع القائمة الحالية وإضافة التسلسل الجديد
+    final existingJson = prefs.getStringList(_storageKey) ?? [];
+    existingJson.add(jsonEncode(sequence.toJson()));
+    await prefs.setStringList(_storageKey, existingJson);
+  }
+
+  static Future<List<SavedSequence>> loadAllSequences() async {
+    final prefs = await SharedPreferences.getInstance();
+    final existingJson = prefs.getStringList(_storageKey) ?? [];
+    return existingJson
+        .map((j) => SavedSequence.fromJson(jsonDecode(j) as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<void> deleteSequence(int index) async {
+    final prefs = await SharedPreferences.getInstance();
+    final existingJson = prefs.getStringList(_storageKey) ?? [];
+    if (index >= 0 && index < existingJson.length) {
+      existingJson.removeAt(index);
+      await prefs.setStringList(_storageKey, existingJson);
+    }
+  }
+
+  // --- التحكم بالتسجيل ---
   void startRecording() {
     _frames.clear();
     _isRecording = true;
@@ -55,7 +120,6 @@ class MotionRecorder {
   void recordFrame(double speed, double depth, String position, double delta) {
     if (!_isRecording) return;
     _recordingTime += delta;
-    // نسجل كل 100 ميلي ثانية لتجنب تضخم البيانات
     if (_frames.isEmpty || _recordingTime - _frames.last.timestamp > 0.1) {
       _frames.add(MotionFrame(
         speed: speed,
@@ -64,6 +128,12 @@ class MotionRecorder {
         timestamp: _recordingTime,
       ));
     }
+  }
+
+  // --- التحكم بالتشغيل ---
+  void loadSequence(SavedSequence sequence) {
+    _frames.clear();
+    _frames.addAll(sequence.frames);
   }
 
   void startPlayback() {

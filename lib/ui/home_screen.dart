@@ -165,3 +165,15 @@ class _FluidCanvasPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
+
+// أضف هذه الدالة داخل _HomeScreenState:
+void _saveCurrentSequence() async {
+  if (_motionRecorder.frameCount == 0) return;
+  final name = "Sequence_${DateTime.now().millisecondsSinceEpoch}";
+  await _motionRecorder.saveCurrentSequence(name);
+  if (context.mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('✅ Saved: $name'), backgroundColor: const Color(0xFFFF2A6D)),
+    );
+  }
+}
