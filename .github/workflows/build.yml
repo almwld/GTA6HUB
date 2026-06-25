@@ -1,48 +1,21 @@
-name: Build gta6hub APK
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
+name: Build GTA6HUB APK
+on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-    
-    - name: Setup Java 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-    
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.16.0'
-        channel: 'stable'
-    
-    - name: Fix and Prepare Project
-      run: |
-        # 1. ضبط الاسم
-        sed -i 's/^name:.*/name: gta6hub/' pubspec.yaml
-        
-        # 2. الهدم وإعادة البناء (هذا هو الحل الجذري للخطأ)
-        rm -rf android
-        flutter create --platforms=android .
-        
-        # 3. جلب المكتبات
-        flutter pub get
-    
-    - name: Build Split APKs (per ABI)
-      run: |
-        flutter build apk --release --split-per-abi --obfuscate --split-debug-info=./debug-info
-    
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: gta6hub-apks
-        path: build/app/outputs/flutter-apk/app-*-release.apk
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: 'temurin', java-version: '17' }
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.16.0' }
+      - run: |
+          flutter pub get
+          flutter pub run flutter_launcher_icons:main
+          rm -rf android
+          flutter create --platforms=android .
+          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=./debug-info
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gta6hub-apks
+          path: build/app/outputs/flutter-apk/app-*-release.apk
