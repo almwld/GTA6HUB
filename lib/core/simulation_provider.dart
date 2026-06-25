@@ -11,6 +11,7 @@ class SimulationProvider with ChangeNotifier {
   String _currentPosition = "Missionary";
   String _partnerName = "Elena";
   String _currentTime = "22:00";
+  bool _autoMode = false;
 
   SimulationState get currentState => _currentState;
   double get arousal => _arousal;
@@ -20,6 +21,12 @@ class SimulationProvider with ChangeNotifier {
   String get currentPosition => _currentPosition;
   String get partnerName => _partnerName;
   String get currentTime => _currentTime;
+  bool get autoMode => _autoMode;
+
+  // دوال جديدة للتحكم التلقائي (للمسجل)
+  void setAutoMode(bool v) { _autoMode = v; notifyListeners(); }
+  void setSpeedDirect(double v) { _thrustSpeed = v.clamp(0.0, 100.0); }
+  void setDepthDirect(double v) { _thrustDepth = v.clamp(0.0, 100.0); }
 
   void increaseSpeed() { _thrustSpeed = (_thrustSpeed + 10.0).clamp(0.0, 100.0); notifyListeners(); }
   void decreaseSpeed() { _thrustSpeed = (_thrustSpeed - 10.0).clamp(0.0, 100.0); notifyListeners(); }
@@ -45,6 +52,6 @@ class SimulationProvider with ChangeNotifier {
     else if (_arousal >= 90) _currentState = SimulationState.peak;
     else if (_arousal > 20) _currentState = SimulationState.active;
     else _currentState = SimulationState.idle;
-    notifyListeners();
+    if (!_autoMode) notifyListeners();
   }
 }

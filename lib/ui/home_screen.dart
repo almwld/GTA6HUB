@@ -4,6 +4,7 @@ import '../core/simulation_provider.dart';
 import '../engine/fluids/fluid_simulator.dart';
 import '../engine/fluids/fluid_emitter.dart';
 import '../engine/cinematics/cinematic_impact_system.dart';
+import '../engine/cinematics/motion_recorder.dart';
 import 'gta_hud.dart';
 import 'director_sandbox.dart';
 
@@ -18,23 +19,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final Ticker _ticker;
   final FluidSimulator _fluidSimulator = FluidSimulator();
   final FluidEmitter _fluidEmitter = FluidEmitter();
+  final MotionRecorder _motionRecorder = MotionRecorder();
   SimulationState _lastState = SimulationState.idle;
 
   @override
   void initState() {
     super.initState();
     _ticker = createTicker((elapsed) {
-      final simProvider = Provider.of<SimulationProvider>(context, listen: false);
+      final sim = Provider.of<SimulationProvider>(context, listen: false);
       double delta = elapsed.inMilliseconds / 1000.0;
-      simProvider.update(delta);
+      
+      // وضع التشغيل التلقائي (المسجل)
+      if (sim.autoMode) {
+        _motionRecorder.updatePlayback(delta);
+        final frame = _motionRecorder.getFrameAtTime(_motionRecorder.playbackTime);
+        if (frame != null) {
+          sim.setSpeedDirect(frame.speed);
+          sim.setDepthDirect(frame.depth);
+          sim.changePosition(frame.position);
+        }
+      }
+      
+      sim.update(delta);
       _fluidSimulator.update(delta);
-      if (simProvider.currentState == SimulationState.peak && _lastState != SimulationState.peak) {
+      
+      // تسجيل الإطارات إذا كان التسجيل نشطًا
+      if (_motionRecorder.isRecording) {
+        _motionRecorder.recordFrame(sim.thrustSpeed, sim.thrustDepth, sim.currentPosition, delta);
+      }
+      
+      if (sim.currentState == SimulationState.peak && _lastState != SimulationState.peak) {
         final origin = Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2);
         final direction = const Offset(0, -1);
-        final newParticles = _fluidEmitter.emitCum(origin, direction, (simProvider.thrustSpeed / 50.0).clamp(0.5, 2.0));
+        final newParticles = _fluidEmitter.emitCum(origin, direction, (sim.thrustSpeed / 50.0).clamp(0.5, 2.0));
         _fluidSimulator.emitParticles(newParticles);
       }
-      _lastState = simProvider.currentState;
+      _lastState = sim.currentState;
       setState(() {});
     });
     _ticker.start();
@@ -66,14 +86,44 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Icon(Icons.local_fire_department, size: 80 + (sim.arousal * 0.4), color: const Color(0xFFFF2A6D)),
                     const SizedBox(height: 20),
                     const Text('GTA6HUB', style: TextStyle(fontSize: 28, color: Colors.white, letterSpacing: 10, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 10),
-                    Text('PROMETHEUS ACTIVE', style: TextStyle(fontSize: 12, color: const Color(0xFF00E5FF).withOpacity(0.7), letterSpacing: 6)),
+                    // مؤشر التسجيل / التشغيل
+                    if (_motionRecorder.isRecording)
+                      const Text('🔴 REC', style: TextStyle(color: Colors.red, fontSize: 12, letterSpacing: 4)),
+                    if (_motionRecorder.isPlaying)
+                      const Text('▶️ PLAYING', style: TextStyle(color: Colors.green, fontSize: 12, letterSpacing: 4)),
                   ],
                 ),
               ),
             ),
+            // شريط التحكم بالتسجيل
+            Positioned(
+              bottom: 100, left: 0, right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _recButton(Icons.fiber_manual_record, Colors.red, () {
+                    if (_motionRecorder.isRecording) {
+                      _motionRecorder.stopRecording();
+                    } else {
+                      _motionRecorder.startRecording();
+                    }
+                    setState(() {});
+                  }, _motionRecorder.isRecording),
+                  const SizedBox(width: 20),
+                  _recButton(Icons.play_arrow, Colors.green, () {
+                    if (_motionRecorder.isPlaying) {
+                      _motionRecorder.stopPlayback();
+                      sim.setAutoMode(false);
+                    } else {
+                      sim.setAutoMode(true);
+                      _motionRecorder.startPlayback();
+                    }
+                    setState(() {});
+                  }, _motionRecorder.isPlaying),
+                ],
+              ),
+            ),
             const GTAHud(),
-            // زر فتح قماش المخرج
             Positioned(
               top: 40, right: 10,
               child: GestureDetector(
@@ -87,6 +137,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _recButton(IconData icon, Color color, VoidCallback onTap, bool active) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: active ? color.withOpacity(0.3) : Colors.black54,
+          border: Border.all(color: color),
+        ),
+        child: Icon(icon, color: color, size: 24),
       ),
     );
   }
