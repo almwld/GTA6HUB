@@ -1,0 +1,44 @@
+name: 🔥 Prometheus CI/CD - Build & Analyze
+
+# متى يتم تشغيل هذا الـ workflow؟
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    name: 🚀 Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. سحب الكود من المستودع
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. تثبيت Flutter
+      - name: 💙 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+
+      # 3. تثبيت الحزم
+      - name: 📦 Install Dependencies
+        run: flutter pub get
+
+      # 4. تحليل الكود (للبحث عن الأخطاء)
+      - name: 🔍 Analyze Code
+        run: flutter analyze
+
+      # 5. بناء نسخة APK
+      - name: 🛠️ Build Release APK
+        run: flutter build apk --release --obfuscate --split-debug-info=./debug-info
+
+      # 6. رفع ملف APK كـ Artifact (يمكن تحميله من GitHub)
+      - name: 📤 Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gta6hub-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
