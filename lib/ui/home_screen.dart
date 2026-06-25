@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   children: [
                     Icon(Icons.local_fire_department, size: 80 + (sim.arousal * 0.4), color: const Color(0xFFFF2A6D)),
                     const SizedBox(height: 20),
-                    const Text('GTA6HUB', style: TextStyle(fontSize: 28, color: Colors.white, letterSpacing: 10, fontWeight: FontWeight.bold)),
+                    const Text('gta6hub', style: TextStyle(fontSize: 28, color: Colors.white, letterSpacing: 10, fontWeight: FontWeight.bold)),
                     if (_motionRecorder.isRecording)
                       const Text('🔴 REC', style: TextStyle(color: Colors.red, fontSize: 12, letterSpacing: 4)),
                     if (_motionRecorder.isPlaying)

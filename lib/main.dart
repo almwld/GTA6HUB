@@ -19,7 +19,7 @@ class GTA6App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GTA6HUB',
+      title: 'gta6hub',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
