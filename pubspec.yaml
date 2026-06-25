@@ -1,0 +1,32 @@
+name: gta6hub
+description: "Prometheus Sensory Engine - GTA6HUB"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_launcher_icons: ^0.13.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/icons/
+    - assets/icons/svg/
+    - assets/images/
+    - assets/fonts/
+    - assets/icon-gta6hub.png
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon-gta6hub.png"
+  min_sdk_android: 21
