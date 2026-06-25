@@ -4,6 +4,40 @@ import '../engine/nodes/advanced_node_interpreter.dart';
 import '../core/simulation_provider.dart';
 import 'package:provider/provider.dart';
 
+// فئة وسيطة محلية أو غلاف لتمكين تعديل الخصائص بدون كسر الفئات الأصلية الثابتة
+class EditableNodeData {
+  final String id;
+  Offset position;
+  String label;
+  final NodeType type;
+  final List<NodeSlot> inputs;
+  final List<NodeSlot> outputs;
+  final Map<String, dynamic> internalValues;
+
+  EditableNodeData({
+    required this.id,
+    required this.position,
+    required this.label,
+    required this.type,
+    required this.inputs,
+    required this.outputs,
+    required this.internalValues,
+  });
+
+  AdvancedNodeData toCoreNode() {
+    return AdvancedNodeData(
+      id: id,
+      position: position,
+      label: label,
+      type: type,
+      inputs: inputs,
+      outputs: outputs,
+      internalValues: internalValues,
+    );
+  }
+  Offset getSlotGlobalPosition(NodeSlot slot) => position + slot.relativePosition;
+}
+
 class DirectorSandbox extends StatefulWidget {
   const DirectorSandbox({Key? key}) : super(key: key);
 
@@ -12,48 +46,48 @@ class DirectorSandbox extends StatefulWidget {
 }
 
 class _DirectorSandboxState extends State<DirectorSandbox> {
-  final List<AdvancedNodeData> _nodes = [];
+  final List<EditableNodeData> _nodes = [];
   final List<NodeWire> _wires = [];
   
-  AdvancedNodeData? _selectedNode;
+  EditableNodeData? _selectedNode;
   Offset? _draggingWireStart;
   Offset? _draggingWireEnd;
   String? _draggingFromNodeId;
   String? _draggingFromSlotName;
 
-  // متحكمات لوحة الخصائص
   final TextEditingController _labelController = TextEditingController();
   final TextEditingController _valueController = TextEditingController();
-
-  late AdvancedNodeInterpreter _interpreter;
 
   @override
   void initState() {
     super.initState();
-    _nodes.add(AdvancedNodeData(
+    _nodes.add(EditableNodeData(
       id: '1', position: const Offset(150, 300), label: 'On Peak', type: NodeType.trigger,
       inputs: [], outputs: [NodeSlot(name: 'Trigger', isInput: false)], internalValues: {},
     ));
-    _nodes.add(AdvancedNodeData(
+    _nodes.add(EditableNodeData(
       id: '2', position: const Offset(450, 300), label: 'Emit Cum', type: NodeType.fluid,
       inputs: [NodeSlot(name: 'Execute', isInput: true)], outputs: [], internalValues: {'power': 1.0},
     ));
-    _nodes.add(AdvancedNodeData(
+    _nodes.add(EditableNodeData(
       id: '3', position: const Offset(450, 500), label: 'Shake Camera', type: NodeType.camera,
       inputs: [NodeSlot(name: 'Execute', isInput: true)], outputs: [], internalValues: {'intensity': 1.0},
     ));
   }
 
+  void _executeInterpreter() {
+    final coreNodes = _nodes.map((n) => n.toCoreNode()).toList();
+    final sim = Provider.of<SimulationProvider>(context, listen: false);
+    final interpreter = AdvancedNodeInterpreter(simProvider: sim, nodes: coreNodes, wires: _wires);
+    interpreter.evaluateAllTriggers();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final sim = Provider.of<SimulationProvider>(context, listen: false);
-    _interpreter = AdvancedNodeInterpreter(simProvider: sim, nodes: _nodes, wires: _wires);
-
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
       body: Stack(
         children: [
-          // لوحة الرسم (Canvas)
           GestureDetector(
             onTapDown: (details) => _handleCanvasTap(details.localPosition),
             onPanUpdate: (details) => _handleNodeDrag(details.delta),
@@ -66,8 +100,6 @@ class _DirectorSandboxState extends State<DirectorSandbox> {
               size: Size.infinite,
             ),
           ),
-
-          // شريط العقد (Node Palette)
           Positioned(
             right: 10, top: 50,
             child: Column(
@@ -79,18 +111,14 @@ class _DirectorSandboxState extends State<DirectorSandbox> {
               ],
             ),
           ),
-
-          // زر التشغيل
           Positioned(
             bottom: 30, right: 30,
             child: FloatingActionButton(
               backgroundColor: const Color(0xFFFF2A6D),
-              onPressed: () => _interpreter.evaluateAllTriggers(),
+              onPressed: _executeInterpreter,
               child: const Icon(Icons.play_arrow),
             ),
           ),
-
-          // لوحة الخصائص (Property Panel) - تظهر عند تحديد عقدة
           if (_selectedNode != null)
             Positioned(
               left: 10, bottom: 30,
@@ -101,11 +129,8 @@ class _DirectorSandboxState extends State<DirectorSandbox> {
     );
   }
 
-  // --- لوحة الخصائص الديناميكية ---
   Widget _buildPropertyPanel() {
     final node = _selectedNode!;
-    _labelController.text = node.label;
-    
     return Container(
       width: 250,
       padding: const EdgeInsets.all(16),
@@ -118,38 +143,26 @@ class _DirectorSandboxState extends State<DirectorSandbox> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // عنوان
           const Text('Properties', style: TextStyle(color: Color(0xFFFF2A6D), fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          // تعديل الاسم
           TextField(
-            controller: _labelController,
+            controller: _labelController..text = node.label,
             style: const TextStyle(color: Colors.white, fontSize: 12),
             decoration: const InputDecoration(
               labelText: 'Label',
               labelStyle: TextStyle(color: Colors.white54, fontSize: 10),
-              enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-              focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF2A6D))),
             ),
             onChanged: (v) => setState(() => node.label = v),
           ),
           const SizedBox(height: 12),
-          // عرض / تعديل القيم الداخلية
           ...node.internalValues.keys.map((key) {
-            _valueController.text = node.internalValues[key].toString();
             return Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: TextField(
-                controller: _valueController,
+                controller: _valueController..text = node.internalValues[key].toString(),
                 style: const TextStyle(color: Colors.white, fontSize: 12),
-                decoration: InputDecoration(
-                  labelText: key,
-                  labelStyle: const TextStyle(color: Colors.white54, fontSize: 10),
-                  enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                  focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF2A6D))),
-                ),
+                decoration: InputDecoration(labelText: key),
                 onChanged: (v) => setState(() {
-                  // محاولة تحويل القيمة إلى double
                   final parsed = double.tryParse(v);
                   if (parsed != null) node.internalValues[key] = parsed;
                 }),
@@ -157,12 +170,12 @@ class _DirectorSandboxState extends State<DirectorSandbox> {
             );
           }),
           const SizedBox(height: 12),
-          // زر الحذف
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red.withOpacity(0.3)),
               onPressed: () => setState(() {
+                _wires.removeWhere((w) => w.fromNodeId == node.id || w.toNodeId == node.id);
                 _nodes.remove(node);
                 _selectedNode = null;
               }),
@@ -178,7 +191,7 @@ class _DirectorSandboxState extends State<DirectorSandbox> {
     return GestureDetector(
       onTap: () {
         setState(() {
-          _nodes.add(AdvancedNodeData(
+          _nodes.add(EditableNodeData(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
             position: Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2),
             label: label.split(' ')[1],
@@ -213,7 +226,7 @@ class _DirectorSandboxState extends State<DirectorSandbox> {
       }
       bool hitNode = false;
       for (var node in _nodes) {
-        if ((node.position - position).distance < 60) {
+        if ((node.position - position).distance < 40) {
           _selectedNode = node;
           hitNode = true;
           break;
@@ -238,7 +251,7 @@ class _DirectorSandboxState extends State<DirectorSandbox> {
       if (_draggingWireStart != null && _draggingWireEnd != null) {
         for (var node in _nodes) {
           for (var slot in node.inputs) {
-            if ((node.getSlotGlobalPosition(slot) - _draggingWireEnd!).distance < 15) {
+            if ((node.getSlotGlobalPosition(slot) - _draggingWireEnd!).distance < 25) {
               _wires.add(NodeWire(fromNodeId: _draggingFromNodeId!, fromSlotName: _draggingFromSlotName!, toNodeId: node.id, toSlotName: slot.name));
               break;
             }
@@ -251,11 +264,10 @@ class _DirectorSandboxState extends State<DirectorSandbox> {
   }
 }
 
-// --- رسام لوحة الرسم (بدون تغيير) ---
 class _SandboxPainter extends CustomPainter {
-  final List<AdvancedNodeData> nodes;
+  final List<EditableNodeData> nodes;
   final List<NodeWire> wires;
-  final AdvancedNodeData? selectedNode;
+  final EditableNodeData? selectedNode;
   final Offset? draggingWireStart;
   final Offset? draggingWireEnd;
 
@@ -267,9 +279,7 @@ class _SandboxPainter extends CustomPainter {
     for (var wire in wires) {
       final fromNode = nodes.firstWhere((n) => n.id == wire.fromNodeId);
       final toNode = nodes.firstWhere((n) => n.id == wire.toNodeId);
-      final fromSlot = fromNode.outputs.firstWhere((s) => s.name == wire.fromSlotName);
-      final toSlot = toNode.inputs.firstWhere((s) => s.name == wire.toSlotName);
-      _drawBezier(canvas, fromNode.getSlotGlobalPosition(fromSlot), toNode.getSlotGlobalPosition(toSlot), wirePaint);
+      _drawBezier(canvas, fromNode.position, toNode.position, wirePaint);
     }
     if (draggingWireStart != null && draggingWireEnd != null) {
       _drawBezier(canvas, draggingWireStart!, draggingWireEnd!, Paint()..color = const Color(0xFFFF2A6D)..strokeWidth = 2.0..style = PaintingStyle.stroke);
