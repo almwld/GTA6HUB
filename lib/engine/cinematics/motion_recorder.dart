@@ -72,7 +72,6 @@ class MotionRecorder {
   double get playbackTime => _playbackTime;
   int get frameCount => _frames.length;
 
-  // --- الحفظ الدائم ---
   static const String _storageKey = 'saved_sequences';
 
   Future<void> saveCurrentSequence(String name) async {
@@ -83,7 +82,6 @@ class MotionRecorder {
       frameCount: _frames.length,
       frames: _frames.toList(),
     );
-    // استرجاع القائمة الحالية وإضافة التسلسل الجديد
     final existingJson = prefs.getStringList(_storageKey) ?? [];
     existingJson.add(jsonEncode(sequence.toJson()));
     await prefs.setStringList(_storageKey, existingJson);
@@ -106,7 +104,6 @@ class MotionRecorder {
     }
   }
 
-  // --- التحكم بالتسجيل ---
   void startRecording() {
     _frames.clear();
     _isRecording = true;
@@ -130,7 +127,6 @@ class MotionRecorder {
     }
   }
 
-  // --- التحكم بالتشغيل ---
   void loadSequence(SavedSequence sequence) {
     _frames.clear();
     _frames.addAll(sequence.frames);

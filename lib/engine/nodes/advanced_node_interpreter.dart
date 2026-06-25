@@ -1,6 +1,7 @@
-import 'node_models.dart';
-import '../core/simulation_provider.dart';
-import '../engine/audio/spatial_audio_engine.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:gta6hub/engine/nodes/node_models.dart';
+import 'package:gta6hub/core/simulation_provider.dart';
+import 'package:gta6hub/engine/audio/spatial_audio_engine.dart';
 
 class AdvancedNodeInterpreter {
   final SimulationProvider _simProvider;

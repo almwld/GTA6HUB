@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
-import '../core/simulation_provider.dart';
-import '../engine/fluids/fluid_simulator.dart';
-import '../engine/fluids/fluid_emitter.dart';
-import '../engine/cinematics/cinematic_impact_system.dart';
-import '../engine/cinematics/motion_recorder.dart';
-import 'gta_hud.dart';
-import 'director_sandbox.dart';
+import 'package:gta6hub/core/simulation_provider.dart';
+import 'package:gta6hub/engine/fluids/fluid_simulator.dart';
+import 'package:gta6hub/engine/fluids/fluid_emitter.dart';
+import 'package:gta6hub/engine/cinematics/cinematic_impact_system.dart';
+import 'package:gta6hub/engine/cinematics/motion_recorder.dart';
+import 'package:gta6hub/ui/gta_hud.dart';
+import 'package:gta6hub/ui/director_sandbox.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -29,7 +30,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final sim = Provider.of<SimulationProvider>(context, listen: false);
       double delta = elapsed.inMilliseconds / 1000.0;
       
-      // وضع التشغيل التلقائي (المسجل)
       if (sim.autoMode) {
         _motionRecorder.updatePlayback(delta);
         final frame = _motionRecorder.getFrameAtTime(_motionRecorder.playbackTime);
@@ -43,7 +43,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       sim.update(delta);
       _fluidSimulator.update(delta);
       
-      // تسجيل الإطارات إذا كان التسجيل نشطًا
       if (_motionRecorder.isRecording) {
         _motionRecorder.recordFrame(sim.thrustSpeed, sim.thrustDepth, sim.currentPosition, delta);
       }
@@ -55,9 +54,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         _fluidSimulator.emitParticles(newParticles);
       }
       _lastState = sim.currentState;
-      setState(() {});
+      if (mounted) setState(() {});
     });
     _ticker.start();
+  }
+
+  void _saveCurrentSequence() async {
+    if (_motionRecorder.frameCount == 0) return;
+    final name = "Sequence_${DateTime.now().millisecondsSinceEpoch}";
+    await _motionRecorder.saveCurrentSequence(name);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('✅ Saved: $name'), backgroundColor: const Color(0xFFFF2A6D)),
+      );
+    }
   }
 
   @override
@@ -86,7 +96,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     Icon(Icons.local_fire_department, size: 80 + (sim.arousal * 0.4), color: const Color(0xFFFF2A6D)),
                     const SizedBox(height: 20),
                     const Text('GTA6HUB', style: TextStyle(fontSize: 28, color: Colors.white, letterSpacing: 10, fontWeight: FontWeight.bold)),
-                    // مؤشر التسجيل / التشغيل
                     if (_motionRecorder.isRecording)
                       const Text('🔴 REC', style: TextStyle(color: Colors.red, fontSize: 12, letterSpacing: 4)),
                     if (_motionRecorder.isPlaying)
@@ -95,7 +104,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
             ),
-            // شريط التحكم بالتسجيل
             Positioned(
               bottom: 100, left: 0, right: 0,
               child: Row(
@@ -109,7 +117,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     }
                     setState(() {});
                   }, _motionRecorder.isRecording),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 10),
+                  // زر حفظ التسلسل الحالي للحفظ الدائم
+                  _recButton(Icons.save, Colors.blue, _saveCurrentSequence, _motionRecorder.frameCount > 0),
+                  const SizedBox(width: 10),
                   _recButton(Icons.play_arrow, Colors.green, () {
                     if (_motionRecorder.isPlaying) {
                       _motionRecorder.stopPlayback();
@@ -164,16 +175,4 @@ class _FluidCanvasPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) => simulator.render(canvas);
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-// أضف هذه الدالة داخل _HomeScreenState:
-void _saveCurrentSequence() async {
-  if (_motionRecorder.frameCount == 0) return;
-  final name = "Sequence_${DateTime.now().millisecondsSinceEpoch}";
-  await _motionRecorder.saveCurrentSequence(name);
-  if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('✅ Saved: $name'), backgroundColor: const Color(0xFFFF2A6D)),
-    );
-  }
 }
