@@ -1,5 +1,6 @@
 import 'node_models.dart';
 import '../core/simulation_provider.dart';
+import '../engine/audio/spatial_audio_engine.dart';
 
 class AdvancedNodeInterpreter {
   final SimulationProvider _simProvider;
@@ -7,16 +8,20 @@ class AdvancedNodeInterpreter {
   final List<NodeWire> _wires;
   final Map<String, DateTime> _lastFiredTime = {};
   final Map<String, int> _coolDownDuration = {
-    "Emit Cum": 2500, "Play Scream": 3000, "Shake Camera": 800, "Play Seq": 5000,
+    "Emit Cum": 2500, "Shake Camera": 800, "Play Seq": 5000,
+    "Moan": 1500, "Scream": 4000,
   };
   final Function(String)? onPlaySequence;
+  final SpatialAudioEngine _audioEngine = SpatialAudioEngine();
 
   AdvancedNodeInterpreter({
     required SimulationProvider simProvider,
     required List<AdvancedNodeData> nodes,
     required List<NodeWire> wires,
     this.onPlaySequence,
-  })  : _simProvider = simProvider, _nodes = nodes, _wires = wires;
+  })  : _simProvider = simProvider, _nodes = nodes, _wires = wires {
+    _audioEngine.init();
+  }
 
   void evaluateAllTriggers() {
     for (var node in _nodes) {
@@ -34,13 +39,13 @@ class AdvancedNodeInterpreter {
       for (var wire in _wires) {
         if (wire.fromNodeId == triggerNode.id && wire.fromSlotName == slot.name) {
           final targetNode = _findNodeById(wire.toNodeId);
-          if (targetNode != null) _executeAction(targetNode, _simProvider.arousal);
+          if (targetNode != null) _executeAction(targetNode, _simProvider.arousal, _simProvider.thrustSpeed);
         }
       }
     }
   }
 
-  void _executeAction(AdvancedNodeData actionNode, double kineticPayload) {
+  void _executeAction(AdvancedNodeData actionNode, double arousal, double speed) {
     final nodeId = actionNode.id; final label = actionNode.label; final now = DateTime.now();
     if (_lastFiredTime.containsKey(nodeId)) {
       final lastTime = _lastFiredTime[nodeId]!;
@@ -49,12 +54,17 @@ class AdvancedNodeInterpreter {
     }
     _lastFiredTime[nodeId] = now;
     switch (label) {
-      case "Emit Cum": print("💦 Emitting Cum! (power: ${(kineticPayload / 100.0).clamp(0.1, 1.0)})"); break;
-      case "Shake Camera": print("📳 Shaking Camera! (intensity: ${actionNode.internalValues['intensity'] ?? 1.0})"); break;
-      case "Play Seq":
-        final seqId = actionNode.internalValues['seq_id']?.toString() ?? '0';
-        print("▶️ Interpreter: Triggering Play Sequence ID: $seqId");
-        onPlaySequence?.call(seqId);
+      case "Emit Cum": print("💦 Emitting Cum!"); break;
+      case "Shake Camera": print("📳 Shaking Camera!"); break;
+      case "Play Seq": onPlaySequence?.call(actionNode.internalValues['seq_id']?.toString() ?? '0'); break;
+      case "Moan":
+        final vol = (actionNode.internalValues['volume'] ?? 0.8).toDouble();
+        _audioEngine.playMoan(vol, speed);
+        print("🔊 Playing Moan (vol: $vol)");
+        break;
+      case "Scream":
+        _audioEngine.playScream();
+        print("🗣️ Playing Scream!");
         break;
       default: print("❓ Unknown action: $label");
     }
