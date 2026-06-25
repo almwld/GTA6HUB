@@ -1,23 +1,30 @@
 name: Prometheus Build
 on: [push]
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
-      - name: Build
+          
+      - name: Atomic Build Process
         run: |
+          # 1. تصحيح الاسم
           sed -i 's/^name:.*/name: gta6hub/' pubspec.yaml
+          # 2. تنظيف جذري
           rm -rf android
+          # 3. إعادة توليد البنية من الصفر
           flutter create --platforms=android .
-          flutter pub get
+          # 4. بناء APK نظيف جداً
           flutter build apk --release --split-per-abi --obfuscate --split-debug-info=./debug-info
-      - name: Upload
+          
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: gta6hub-apks
-          path: build/app/outputs/flutter-apk/app-*.apk
+          path: build/app/outputs/flutter-apk/*.apk
