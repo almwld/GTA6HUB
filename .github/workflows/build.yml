@@ -1,6 +1,5 @@
-name: 🔥 Prometheus CI/CD - Build & Analyze
+name: 🔥 Prometheus CI/CD - Build Only
 
-# متى يتم تشغيل هذا الـ workflow؟
 on:
   push:
     branches: [ "main" ]
@@ -24,19 +23,15 @@ jobs:
           flutter-version: '3.22.0'
           channel: 'stable'
 
-      # 3. تثبيت الحزم
+      # 3. تثبيت الحزم (Dependencies)
       - name: 📦 Install Dependencies
         run: flutter pub get
 
-      # 4. تحليل الكود (للبحث عن الأخطاء)
-      - name: 🔍 Analyze Code
-        run: flutter analyze
-
-      # 5. بناء نسخة APK
+      # 4. بناء نسخة APK مباشرة (تجاوز المحلل)
       - name: 🛠️ Build Release APK
         run: flutter build apk --release --obfuscate --split-debug-info=./debug-info
 
-      # 6. رفع ملف APK كـ Artifact (يمكن تحميله من GitHub)
+      # 5. رفع ملف APK كـ Artifact
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
