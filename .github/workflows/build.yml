@@ -1,4 +1,4 @@
-name: 🔥 Prometheus CI/CD - Build Only
+name: 🔥 Prometheus CI/CD - Full Cloud Compilation
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: 🚀 Build Android APK
+    name: 🚀 Full Autonomous Android Build
     runs-on: ubuntu-latest
 
     steps:
@@ -16,22 +16,37 @@ jobs:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. تثبيت Flutter
+      # 2. تثبيت بيئة فلاتر المستقرة في السحاب
       - name: 💙 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
           channel: 'stable'
 
-      # 3. تثبيت الحزم (Dependencies)
-      - name: 📦 Install Dependencies
-        run: flutter pub get
+      # 3. تثبيت بيئة جاوا المتوافقة مع Gradle الحديث في السحاب
+      - name: ☕ Setup Java Development Kit (JDK)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
 
-      # 4. بناء نسخة APK مباشرة (تجاوز المحلل)
+      # 4. الحل الجراحي السحابي: حذف مجلد أندرويد التالف (إن وجد) وإعادة توليده بنسخة نظيفة ومتوافقة
+      - name: 🛠️ Regenerate Clean Android Shell
+        run: |
+          rm -rf android
+          flutter create --platforms=android .
+
+      # 5. تنظيف الكاش وجلب الحزم والمكتبات برمجياً داخل السيرفر
+      - name: 📦 Install Dependencies
+        run: |
+          flutter clean
+          flutter pub get
+
+      # 6. بناء نسخة الـ APK الموعودة مباشرة مع التعمية لحمايتها
       - name: 🛠️ Build Release APK
         run: flutter build apk --release --obfuscate --split-debug-info=./debug-info
 
-      # 5. رفع ملف APK كـ Artifact
+      # 7. رفع ملف الـ APK كـ Artifact جاهز للتحميل والتثبيت فوراً
       - name: 📤 Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
