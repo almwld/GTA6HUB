@@ -1,57 +1,36 @@
-name: 🔥 Prometheus CI/CD - Full Cloud Compilation
+name: 🔥 Prometheus CI/CD - Split-ABI Build
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
   build:
-    name: 🚀 Full Autonomous Android Build
     runs-on: ubuntu-latest
-
     steps:
-      # 1. سحب الكود من المستودع
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
 
-      # 2. تثبيت بيئة فلاتر المستقرة في السحاب
+      - name: 🛠️ Force Rename Project to gta6hub
+        run: sed -i 's/^name:.*/name: gta6hub/' pubspec.yaml
+
       - name: 💙 Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.22.0'
-          channel: 'stable'
 
-      # 3. تثبيت بيئة جاوا المتوافقة مع Gradle الحديث في السحاب
-      - name: ☕ Setup Java Development Kit (JDK)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      # 4. الحل الجراحي السحابي: حذف مجلد أندرويد التالف (إن وجد) وإعادة توليده بنسخة نظيفة ومتوافقة
       - name: 🛠️ Regenerate Clean Android Shell
         run: |
           rm -rf android
           flutter create --platforms=android .
 
-      # 5. تنظيف الكاش وجلب الحزم والمكتبات برمجياً داخل السيرفر
-      - name: 📦 Install Dependencies
+      - name: 📦 Build Split APKs
         run: |
-          flutter clean
           flutter pub get
+          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=./debug-info
 
-      # 6. بناء نسخة الـ APK الموعودة مباشرة مع التعمية لحمايتها
-      - name: 🛠️ Build Release APK
-        run: flutter build apk --release --obfuscate --split-debug-info=./debug-info
-
-      # 7. رفع ملف الـ APK كـ Artifact جاهز للتحميل والتثبيت فوراً
-      - name: 📤 Upload APK Artifact
+      - name: 📤 Upload All Split APKs
         uses: actions/upload-artifact@v4
         with:
-          name: gta6hub-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-# Trigger Dynamic Force Rebuild 2026
-# Force Rebuild Triggered Successfully
-# Rebuild Signal
+          name: gta6hub-apks
+          path: build/app/outputs/flutter-apk/app-*.apk
