@@ -1,4 +1,4 @@
-name: Build GTA6HUB APK
+name: Build gta6hub APK
 on: [push]
 jobs:
   build:
