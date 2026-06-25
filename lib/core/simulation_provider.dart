@@ -9,6 +9,8 @@ class SimulationProvider with ChangeNotifier {
   double _thrustSpeed = 20.0;
   double _thrustDepth = 30.0;
   String _currentPosition = "Missionary";
+  String _partnerName = "Elena";
+  String _currentTime = "22:00";
 
   SimulationState get currentState => _currentState;
   double get arousal => _arousal;
@@ -16,6 +18,8 @@ class SimulationProvider with ChangeNotifier {
   double get thrustSpeed => _thrustSpeed;
   double get thrustDepth => _thrustDepth;
   String get currentPosition => _currentPosition;
+  String get partnerName => _partnerName;
+  String get currentTime => _currentTime;
 
   void increaseSpeed() { _thrustSpeed = (_thrustSpeed + 10.0).clamp(0.0, 100.0); notifyListeners(); }
   void decreaseSpeed() { _thrustSpeed = (_thrustSpeed - 10.0).clamp(0.0, 100.0); notifyListeners(); }
@@ -25,9 +29,14 @@ class SimulationProvider with ChangeNotifier {
 
   void update(double delta) {
     double effort = (_thrustSpeed * 0.4) + (_thrustDepth * 0.6);
-    if (effort > 10.0) {
-      _arousal = (_arousal + effort * 0.02 * delta).clamp(0.0, 100.0);
-      _stamina = (_stamina - effort * 0.05 * delta).clamp(0.0, 100.0);
+    if (_currentState == SimulationState.exhausted) {
+      _stamina = (_stamina + 8.0 * delta).clamp(0.0, 100.0);
+      _arousal = (_arousal - 12.0 * delta).clamp(0.0, 100.0);
+      if (_stamina >= 40.0) _currentState = SimulationState.idle;
+    } else if (effort > 10.0) {
+      double growthModifier = 1.0 + (_arousal * 0.015);
+      _arousal = (_arousal + effort * 0.02 * growthModifier * delta).clamp(0.0, 100.0);
+      _stamina = (_stamina - effort * 0.05 * (1.0 + _thrustSpeed * 0.01) * delta).clamp(0.0, 100.0);
     } else {
       _arousal = (_arousal - 3.0 * delta).clamp(0.0, 100.0);
       _stamina = (_stamina + 2.0 * delta).clamp(0.0, 100.0);
