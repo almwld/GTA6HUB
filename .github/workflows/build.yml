@@ -32,7 +32,7 @@ jobs:
       - name: Prepare Android project
         run: |
           rm -rf android
-          flutter create --platforms=android --org com.gta6hub .
+          flutter create --project-name gta6hub --platforms=android --org com.gta6hub .
           flutter pub get
           dart run flutter_launcher_icons
 
